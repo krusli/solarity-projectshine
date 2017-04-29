@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:custom="http://schemas.android.com/apk/res-auto">
 
     <RelativeLayout
         android:id="@+id/activity_home"
@@ -13,15 +14,41 @@
         tools:context="krusli.solarity.Home">
 
         <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-            <Button
-                android:layout_centerInParent="true"
-                android:id="@+id/startStopMeasuring"
-                android:text="Measure"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true">
+            <TextView
+                android:id="@+id/blurb"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textAlignment="center"
+                android:text="Solarity uses your device's ambient light sensor to help estimate the amount of energy you can get from installing solar panels.\n\nHold your device with the front facing the sun, and wait for your device to vibrate."
+                android:textSize="16dp"
+                android:layout_centerHorizontal="true"
                 />
+
+            <RelativeLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/blurb"
+                android:layout_centerInParent="true"
+                android:layout_marginTop="20dp" >
+                <com.github.lzyzsd.circleprogress.DonutProgress
+                    android:id="@+id/donutProgress"
+                    android:layout_width="150dp"
+                    android:layout_height="150dp"
+                    android:layout_centerInParent="true"
+                    />
+                <Button
+                    android:id="@+id/startStopMeasuring"
+                    android:text="Measure"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="@style/Widget.AppCompat.Button.Borderless"
+                    android:layout_centerInParent="true"
+                    />
+            </RelativeLayout>
+
         </RelativeLayout>
     </RelativeLayout>
 

@@ -3,14 +3,20 @@ package krusli.solarity;
 import android.content.Context;
 import android.content.Intent;
 import android.databinding.DataBindingUtil;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.CountDownTimer;
 import android.os.Handler;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+
+import com.github.lzyzsd.circleprogress.CircleProgress;
+import com.github.lzyzsd.circleprogress.DonutProgress;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,10 +85,37 @@ public class Home extends AppCompatActivity implements SensorEventListener {
 
         resultsIntent = new Intent(this, Results.class);
 
+        final DonutProgress donutProgress = binding.donutProgress;
+
+        donutProgress.setShowText(false);
+//        donutProgress.setUnfinishedStrokeColor(ContextCompat.getColor(this, R.color.colorPrimaryDark));
+        donutProgress.setFinishedStrokeColor(ContextCompat.getColor(this, R.color.colorPrimaryDark));
+//        donutProgress.setDonut_progress("100");
+
+
+
         /* when button clicked, start sampling from the light sensor */
         binding.startStopMeasuring.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                final int timeToCountDownMilis = 5000;
+                donutProgress.setMax(timeToCountDownMilis);
+
+                // Initiates and starts the countdowntimer which gradually increases the "progress" in the progress bar
+                new CountDownTimer(timeToCountDownMilis, 50) {
+
+                    @Override
+                    public void onTick(long millisUntilFinished) {
+                        donutProgress.setProgress(timeToCountDownMilis - (int) millisUntilFinished);
+                    }
+
+                    @Override
+                    public void onFinish() {
+
+                    }
+
+                }.start();
+
                 binding.startStopMeasuring.setText("Measuring...");
                 sensorSamples.clear();  // clear out old samples
                 measuring = true;

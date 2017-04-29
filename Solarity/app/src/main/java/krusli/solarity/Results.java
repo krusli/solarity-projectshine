@@ -8,12 +8,18 @@ import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.Description;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
@@ -47,6 +53,17 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
 
     Float lightIntensity;
 
+    public static final double PANEL_EFFICIENCY = 0.2;
+
+    double calculatekWh(List<Float> radiationList, int panelSize) {
+        double sum = 0;
+        for (int i=0; i<radiationList.size(); i++) {
+            sum += panelSize * radiationList.get(i) * PANEL_EFFICIENCY * 1;
+        }
+        return sum/1000;
+    }
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,8 +83,12 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
                     .build();
         }
 
-        // set chart height to 50% display screen height
-        binding.chart.setMinimumHeight((int) (this.getResources().getDisplayMetrics().heightPixels * 0.5));
+//        // set chart height
+//        android.view.ViewGroup.LayoutParams params = binding.chart.getLayoutParams();
+//        DisplayMetrics dm = new DisplayMetrics();
+//        getWindowManager().getDefaultDisplay().getMetrics(dm);
+//        params.height = (int) (dm.heightPixels * 0.3);
+//        binding.chart.setLayoutParams(params);
 
     }
 
@@ -133,24 +154,61 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
 
                         @Override
                         public void onNext(ApiResponse apiResponse) {
-                            List<Float> radiationByHour = apiResponse.getRadiationByHour();
                             Log.d("API response", apiResponse.getRadiationByHour().toString());
+                            List<Float> radiationByHour = apiResponse.getRadiationByHour();
                             LineChart chart = binding.chart;
-                            List<Entry> entries = new ArrayList<Entry>();
+
+                            // customise chart display
+                            chart.setNoDataText("Loading...");  // TODO: does not work
+//                            chart.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+
+                            // styling
+                            Description description = new Description(); description.setText("");
+                            chart.setDescription(description);
+                            chart.setDrawGridBackground(false);
+
+//                            XAxis xAxis = chart.getXAxis();
+//                            xAxis.setDrawGridLines(false);
+//                            xAxis.setDrawAxisLine(false);
+//
+//                            YAxis leftAxis = chart.getAxisLeft();
+//                            leftAxis.setDrawAxisLine(false);
+//                            YAxis rightAxis = chart.getAxisRight();
+//                            rightAxis.setDrawAxisLine(false);
+
+//                            rightAxis.setGranularityEnabled(false);
+
+                            List<Entry> entries = new ArrayList<>();
 
                             // load to entries
                             for (int i=0; i<radiationByHour.size(); i++) {
-                                Log.d("radiationByHour", String.format("%f", radiationByHour.get(i)));
                                 int hour = i + 1; // index 0 = 0100, index 1 = 0200 and so on
                                 entries.add(new Entry(hour, radiationByHour.get(i)));
                             }
 
                             LineDataSet dataSet = new LineDataSet(entries, "Power in W/m2");
-                            dataSet.setColor(R.color.colorPrimaryDark);
-                            dataSet.setValueTextColor(R.color.colorPrimaryText);
+                            dataSet.setColor(ContextCompat.getColor(getBaseContext(), R.color.colorPrimaryDark));
+                            dataSet.setCircleColor(ContextCompat.getColor(getBaseContext(), R.color.colorPrimary));
+//                            dataSet.setValueTextColor(R.color.colorPrimaryText);
                             LineData lineData = new LineData(dataSet);
                             chart.setData(lineData);
+
+                            Legend l = chart.getLegend();
+                            l.setEnabled(false);
+
+                            chart.getAxisLeft().setEnabled(false);
+                            chart.getAxisLeft().setSpaceTop(40);
+                            chart.getAxisLeft().setSpaceBottom(40);
+                            chart.getAxisRight().setEnabled(false);
+
+                            chart.getXAxis().setEnabled(false);
+
+                            chart.animateX(1000);
+
                             chart.invalidate(); // refresh
+                            Log.d("calculate", String.valueOf(calculatekWh(radiationByHour, 72)));
+                            binding.generatedPower.setText(String.format("With a solar panel of size %dm2, you can generate %f kWh over a day", 72, calculatekWh(radiationByHour, 72)));
+
                         }
                     });
 
