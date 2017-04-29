@@ -39,7 +39,7 @@ def get_predicted_radiation(month, barometric_pressure):
     data = json.dumps(data)
 
     response = json.loads(requests.post(url, headers=headers, data=data).text)
-    results = [entry[4] for entry in response['Results']['output1']['value']['Values']] # 4th column: predicted solar radiation (W/m2)
+    results = [float(entry[4]) for entry in response['Results']['output1']['value']['Values']] # 4th column: predicted solar radiation (W/m2)
     return results
 
 @app.route('/', methods=['GET', 'POST'])
@@ -61,7 +61,7 @@ def get_predictions():
     barometric = dark_sky.get_current_barometric(latitude, longitude)
     barometric = dark_sky.hPa_to_inHg(barometric)
 
-    return json.dumps(get_predicted_radiation(month, barometric))
+    return json.dumps(dict(radiationByHour=get_predicted_radiation(month, barometric)))
 
 
 # get_predicted_radiation(4, 30)
