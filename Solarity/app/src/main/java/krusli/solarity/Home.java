@@ -39,6 +39,7 @@ public class Home extends AppCompatActivity implements SensorEventListener {
             }
 
             /* calculate average value */
+            // TODO: if standard deviation > 100, re-measure
             float sum = 0;
             for (int i=0; i<sensorSamples.size(); i++) {
                 sum += sensorSamples.get(i);

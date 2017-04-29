@@ -22,6 +22,8 @@ public class Results extends AppCompatActivity {
 
         Log.d("avg @ Results.java", String.format("%f", avg));
 
+        /* make a request to our backend */
+
 
     }
 }
