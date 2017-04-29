@@ -10,6 +10,6 @@ import rx.Observable;
 
 public interface PredictionsService {
     @GET("predictions")
-    Observable<RadiationByHour> getPredictionsData(@Query("lat") float latitude, @Query("lon") float longitude,
-                                                   @Query("month") float month, @Query("measurement") float lightIntensity);
+    Observable<ApiResponse> getPredictionsData(@Query("lat") double latitude, @Query("lon") double longitude,
+                                               @Query("month") int month, @Query("measurement") float lightIntensity);
 }

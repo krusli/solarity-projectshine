@@ -9,17 +9,17 @@ import java.util.List;
  * Created by kenneth on 29/4/17.
  */
 
-public class RadiationByHour {
+public class ApiResponse {
 
     @SerializedName("radiationByHour")
     @Expose
-    private List<Double> radiationByHour = null;
+    private List<Float> radiationByHour = null;
 
-    public List<Double> getRadiationByHour() {
+    public List<Float> getRadiationByHour() {
         return radiationByHour;
     }
 
-    public void setRadiationByHour(List<Double> radiationByHour) {
+    public void setRadiationByHour(List<Float> radiationByHour) {
         this.radiationByHour = radiationByHour;
     }
 
