@@ -1,7 +1,13 @@
 from flask import Flask, request
+from pymongo import MongoClient
 import json, requests
 from pprint import pprint
+from datetime import datetime
 app = Flask(__name__)
+
+client = MongoClient()
+db = client.solarity
+crowdsourcedData = db.crowdsourcedData
 
 class DarkSky:
     def __init__(self, token):
@@ -42,6 +48,13 @@ def get_predicted_radiation(month, barometric_pressure):
     results = [float(entry[4]) for entry in response['Results']['output1']['value']['Values']] # 4th column: predicted solar radiation (W/m2)
     return results
 
+def lux_to_W_per_m2(lux):
+    try:
+        lux = float(lux)
+        return lux * 0.0079
+    except ValueError:
+        return
+
 @app.route('/', methods=['GET', 'POST'])
 def root():
     return 'Hello world'
@@ -51,15 +64,33 @@ def get_predictions():
     month = request.args.get('month')
     latitude = request.args.get('lat')
     longitude = request.args.get('lon')
+    measurement = request.args.get('measurement')
 
     error = None
-    if (not month or not latitude or not longitude):    # missing params
+    if (not month or not latitude or not longitude or not measurement):    # missing params
         error = True
     if error:
         return 'Missing or invalid params.'
 
     barometric = dark_sky.get_current_barometric(latitude, longitude)
     barometric = dark_sky.hPa_to_inHg(barometric)
+
+    now = datetime.now()
+    day = now.day()
+    month = now.month()
+    year = now.year()
+    hour = now.hour()
+    # TODO: time date from client's locale
+    crowdsourcedData.insert_one(\
+    {
+        "barometricPressure": barometric,
+        "day": day,
+        "month": month,
+        "year": year,
+        "hour": hour,
+        "radiation": lux_to_W_per_m2(measurement)
+    })
+    crowdsourcedData.find_one()
 
     return json.dumps(dict(radiationByHour=get_predicted_radiation(month, barometric)))
 

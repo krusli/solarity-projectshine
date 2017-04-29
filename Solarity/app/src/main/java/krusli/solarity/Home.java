@@ -14,6 +14,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Toast;
 
 import com.github.lzyzsd.circleprogress.CircleProgress;
 import com.github.lzyzsd.circleprogress.DonutProgress;
@@ -92,6 +93,8 @@ public class Home extends AppCompatActivity implements SensorEventListener {
         donutProgress.setFinishedStrokeColor(ContextCompat.getColor(this, R.color.colorPrimaryDark));
 //        donutProgress.setDonut_progress("100");
 
+        // TODO: handle devices whose max values are not high enough
+        float maxValue = mLight.getMaximumRange(); 
 
 
         /* when button clicked, start sampling from the light sensor */
@@ -117,6 +120,8 @@ public class Home extends AppCompatActivity implements SensorEventListener {
                 }.start();
 
                 binding.startStopMeasuring.setText("Measuring...");
+                donutProgress.setProgress(0);
+                Toast.makeText(getBaseContext(), "Loading...", Toast.LENGTH_SHORT);   // TODO: handle 0 lux, handle high stdev
                 sensorSamples.clear();  // clear out old samples
                 measuring = true;
                 handler.post(sampleSensorData); // start sampling
