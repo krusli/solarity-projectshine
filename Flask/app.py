@@ -76,10 +76,10 @@ def get_predictions():
     barometric = dark_sky.hPa_to_inHg(barometric)
 
     now = datetime.now()
-    day = now.day()
-    month = now.month()
-    year = now.year()
-    hour = now.hour()
+    day = now.day
+    month = now.month
+    year = now.year
+    hour = now.hour
     # TODO: time date from client's locale
     crowdsourcedData.insert_one(\
     {
