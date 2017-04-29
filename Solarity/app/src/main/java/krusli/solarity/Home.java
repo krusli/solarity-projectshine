@@ -1,6 +1,7 @@
 package krusli.solarity;
 
 import android.content.Context;
+import android.content.Intent;
 import android.databinding.DataBindingUtil;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -9,7 +10,6 @@ import android.hardware.SensorManager;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 
 import java.util.ArrayList;
@@ -28,8 +28,9 @@ public class Home extends AppCompatActivity implements SensorEventListener {
 
     private boolean measuring = false;
     private Handler handler = new Handler();
+    private Intent resultsIntent;
 
-    private Runnable stopMeasuring = new Runnable() {
+    private Runnable doneMeasuring = new Runnable() {
         @Override
         public void run() {
             if (measuring) {
@@ -43,7 +44,10 @@ public class Home extends AppCompatActivity implements SensorEventListener {
                 sum += sensorSamples.get(i);
             }
             float avg = sum/sensorSamples.size();
-            binding.resultsTextView.setText(String.format("%f", avg));
+
+            /* start Results activity */
+            resultsIntent.putExtra("LIGHT_VALUE", avg);
+            startActivity(resultsIntent);
         }
     };
     private Runnable sampleSensorData = new Runnable() {
@@ -72,6 +76,8 @@ public class Home extends AppCompatActivity implements SensorEventListener {
             }
         }
 
+        resultsIntent = new Intent(this, Results.class);
+
         /* when button clicked, start sampling from the light sensor */
         binding.startStopMeasuring.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -80,7 +86,7 @@ public class Home extends AppCompatActivity implements SensorEventListener {
                 sensorSamples.clear();  // clear out old samples
                 measuring = true;
                 handler.post(sampleSensorData); // start sampling
-                handler.postDelayed(stopMeasuring, 5000);   // stop measuring after 5 seconds
+                handler.postDelayed(doneMeasuring, 5000);   // stop measuring after 5 seconds
             }
         });
     }
