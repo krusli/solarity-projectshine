@@ -216,7 +216,7 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
                             drawChart();
 
                             binding.generatedPower.setText(
-                                    Html.fromHtml(String.format("1 m<sup>2</sup> of solar panels is estimated to generate %.2f kWh in a day at your location.",
+                                    Html.fromHtml(String.format("1 m<sup>2</sup> of solar panels here generates an estimated %.2f kWh of electricity every day.",
                                             calculatekWh(radiationByHour, 1))));
                             kWhPerM2PerDay = calculatekWh(radiationByHour, 1);
                         }

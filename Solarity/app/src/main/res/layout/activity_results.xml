@@ -59,8 +59,14 @@
                 <Button
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Buy a solar panel"
+                    android:id="@+id/learnMore"
+                    android:text="Learn more"/>
+                <Button
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Purchase"
                     android:id="@+id/buyButton" />
+
             </LinearLayout>
 
 
