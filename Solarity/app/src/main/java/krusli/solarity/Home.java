@@ -37,6 +37,8 @@ public class Home extends AppCompatActivity implements SensorEventListener {
     private Handler handler = new Handler();
     private Intent resultsIntent;
 
+    DonutProgress donutProgress;
+
     private Runnable doneMeasuring = new Runnable() {
         @Override
         public void run() {
@@ -52,6 +54,8 @@ public class Home extends AppCompatActivity implements SensorEventListener {
                 sum += sensorSamples.get(i);
             }
             float avg = sum/sensorSamples.size();
+
+            donutProgress.setProgress(0);   // reset
 
             /* start Results activity */
             resultsIntent.putExtra("LIGHT_VALUE", avg);
@@ -86,7 +90,7 @@ public class Home extends AppCompatActivity implements SensorEventListener {
 
         resultsIntent = new Intent(this, Results.class);
 
-        final DonutProgress donutProgress = binding.donutProgress;
+        donutProgress = binding.donutProgress;
 
         donutProgress.setShowText(false);
 //        donutProgress.setUnfinishedStrokeColor(ContextCompat.getColor(this, R.color.colorPrimaryDark));
@@ -94,7 +98,7 @@ public class Home extends AppCompatActivity implements SensorEventListener {
 //        donutProgress.setDonut_progress("100");
 
         // TODO: handle devices whose max values are not high enough
-        float maxValue = mLight.getMaximumRange(); 
+        float maxValue = mLight.getMaximumRange();
 
 
         /* when button clicked, start sampling from the light sensor */
@@ -114,13 +118,12 @@ public class Home extends AppCompatActivity implements SensorEventListener {
 
                     @Override
                     public void onFinish() {
-
+                        donutProgress.setProgress(timeToCountDownMilis);
                     }
 
                 }.start();
 
                 binding.startStopMeasuring.setText("Measuring...");
-                donutProgress.setProgress(0);
                 Toast.makeText(getBaseContext(), "Loading...", Toast.LENGTH_SHORT);   // TODO: handle 0 lux, handle high stdev
                 sensorSamples.clear();  // clear out old samples
                 measuring = true;

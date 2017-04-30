@@ -38,7 +38,7 @@ def get_predicted_radiation(month, barometric_pressure):
     data['Inputs']['input1'] = {}
     data['Inputs']['input1']['ColumnNames'] = ['month', 'hour', 'barometricPressure', 'radiation']
     values = []
-    for hour in range(1, 25):   # for every hour in the day
+    for hour in range(0, 24):   # for every hour in the day
         values.append([str(month), str(hour), str(barometric_pressure), '0'])   # TODO: use Dark Sky forecast API for forecasted weather
     data['Inputs']['input1']['Values'] = values
     data['GlobalParameters'] = {}

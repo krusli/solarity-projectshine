@@ -27,23 +27,18 @@ dependencies {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
 
-    compile 'com.google.android.gms:play-services:10.2.4'
-
     //noinspection GradleCompatible
+    compile 'com.google.android.gms:play-services:10.2.4'
     compile 'com.android.support:appcompat-v7:23.4.0'
     compile 'com.android.support:design:23.4.0'
-
     compile 'com.squareup.retrofit2:retrofit:2.0.2'
     compile 'com.squareup.retrofit2:converter-gson:2.0.2'
     compile 'com.squareup.retrofit2:adapter-rxjava:2.0.2'
-
     compile 'io.reactivex:rxandroid:1.2.1'
     compile 'io.reactivex:rxjava:1.1.6'
     compile 'com.google.code.gson:gson:2.7'
-
     compile 'com.github.PhilJay:MPAndroidChart:v3.0.2'
-
     compile 'com.github.lzyzsd:circleprogress:1.2.1'
-
+    compile 'com.android.support.constraint:constraint-layout:1.0.2'
     testCompile 'junit:junit:4.12'
 }

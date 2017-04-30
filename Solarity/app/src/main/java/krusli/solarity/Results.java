@@ -11,8 +11,10 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Html;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
@@ -52,15 +54,50 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
     Location mLastLocation;
 
     Float lightIntensity;
+    List<Float> radiationByHour;
+    double kWhPerM2PerDay;
 
-    public static final double PANEL_EFFICIENCY = 0.2;
+    LineChart chart;
 
-    double calculatekWh(List<Float> radiationList, int panelSize) {
+    public static final double PANEL_EFFICIENCY = 0.14;
+
+    double calculatekWh(List<Float> radiationList, double panelSize) {
         double sum = 0;
         for (int i=0; i<radiationList.size(); i++) {
-            sum += panelSize * radiationList.get(i) * PANEL_EFFICIENCY * 1;
+            sum += panelSize * radiationList.get(i) * PANEL_EFFICIENCY * 1; // 1 hour
         }
         return sum/1000;
+    }
+
+    void drawChart() {
+        List<Entry> entries = new ArrayList<>();
+        // load to entries
+        for (int i=0; i<radiationByHour.size(); i++) {
+            entries.add(new Entry(i, radiationByHour.get(i)));
+        }
+
+        LineDataSet dataSet = new LineDataSet(entries, "Power in W/m2");
+        dataSet.setColor(ContextCompat.getColor(getBaseContext(), R.color.colorPrimaryDark));
+        dataSet.setCircleColor(ContextCompat.getColor(getBaseContext(), R.color.colorPrimary));
+//                            dataSet.setValueTextColor(R.color.colorPrimaryText);
+        LineData lineData = new LineData(dataSet);
+        chart.setData(lineData);
+
+        Description description = new Description(); description.setText("");
+        chart.setDescription(description);
+        chart.setDrawGridBackground(false);
+        Legend l = chart.getLegend();
+        l.setEnabled(false);
+        chart.getAxisLeft().setEnabled(false);
+        chart.getAxisLeft().setSpaceTop(40);
+        chart.getAxisLeft().setSpaceBottom(40);
+        chart.getAxisRight().setEnabled(false);
+        chart.getXAxis().setDrawAxisLine(false);
+        chart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
+
+        chart.animateX(1000);
+
+        chart.invalidate(); // refresh
     }
 
 
@@ -68,6 +105,8 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = DataBindingUtil.setContentView(this, R.layout.activity_results);
+
+        chart = binding.chart;
 
         /* handle intent */
         Intent intent = getIntent();
@@ -83,6 +122,24 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
                     .build();
         }
 
+
+        binding.resultsBlurb.setText(Html.fromHtml("Estimated solar radiation in Watts per m<sup>2</sup>"));
+
+        binding.calcButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (radiationByHour != null) {  // implies kWhPerM2PerDay != null
+                    Intent calcIntent = new Intent(getBaseContext(), Calculator.class);
+                    float[] radiationByHourP = new float[radiationByHour.size()];
+                    for (int i=0; i<radiationByHour.size(); i++) {
+                        radiationByHourP[i] = radiationByHour.get(i);
+                    }
+                    calcIntent.putExtra("RADIATION_BY_HOUR", radiationByHourP);
+                    calcIntent.putExtra("KWH_PER_M2_PER_DAY", kWhPerM2PerDay);
+                    startActivity(calcIntent);
+                }
+            }
+        });
 //        // set chart height
 //        android.view.ViewGroup.LayoutParams params = binding.chart.getLayoutParams();
 //        DisplayMetrics dm = new DisplayMetrics();
@@ -105,7 +162,6 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
         mGoogleApiClient.disconnect();
         super.onStop();
     }
-
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
@@ -155,60 +211,14 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
                         @Override
                         public void onNext(ApiResponse apiResponse) {
                             Log.d("API response", apiResponse.getRadiationByHour().toString());
-                            List<Float> radiationByHour = apiResponse.getRadiationByHour();
-                            LineChart chart = binding.chart;
+                            radiationByHour = apiResponse.getRadiationByHour();
 
-                            // customise chart display
-                            chart.setNoDataText("Loading...");  // TODO: does not work
-//                            chart.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+                            drawChart();
 
-                            // styling
-                            Description description = new Description(); description.setText("");
-                            chart.setDescription(description);
-                            chart.setDrawGridBackground(false);
-
-//                            XAxis xAxis = chart.getXAxis();
-//                            xAxis.setDrawGridLines(false);
-//                            xAxis.setDrawAxisLine(false);
-//
-//                            YAxis leftAxis = chart.getAxisLeft();
-//                            leftAxis.setDrawAxisLine(false);
-//                            YAxis rightAxis = chart.getAxisRight();
-//                            rightAxis.setDrawAxisLine(false);
-
-//                            rightAxis.setGranularityEnabled(false);
-
-                            List<Entry> entries = new ArrayList<>();
-
-                            // load to entries
-                            for (int i=0; i<radiationByHour.size(); i++) {
-                                int hour = i + 1; // index 0 = 0100, index 1 = 0200 and so on
-                                entries.add(new Entry(hour, radiationByHour.get(i)));
-                            }
-
-                            LineDataSet dataSet = new LineDataSet(entries, "Power in W/m2");
-                            dataSet.setColor(ContextCompat.getColor(getBaseContext(), R.color.colorPrimaryDark));
-                            dataSet.setCircleColor(ContextCompat.getColor(getBaseContext(), R.color.colorPrimary));
-//                            dataSet.setValueTextColor(R.color.colorPrimaryText);
-                            LineData lineData = new LineData(dataSet);
-                            chart.setData(lineData);
-
-                            Legend l = chart.getLegend();
-                            l.setEnabled(false);
-
-                            chart.getAxisLeft().setEnabled(false);
-                            chart.getAxisLeft().setSpaceTop(40);
-                            chart.getAxisLeft().setSpaceBottom(40);
-                            chart.getAxisRight().setEnabled(false);
-
-                            chart.getXAxis().setEnabled(false);
-
-                            chart.animateX(1000);
-
-                            chart.invalidate(); // refresh
-                            Log.d("calculate", String.valueOf(calculatekWh(radiationByHour, 72)));
-                            binding.generatedPower.setText(String.format("With a solar panel of size %dm2, you can generate %f kWh over a day", 72, calculatekWh(radiationByHour, 72)));
-
+                            binding.generatedPower.setText(
+                                    Html.fromHtml(String.format("1 m<sup>2</sup> of solar panels is estimated to generate %.2f kWh in a day at your location.",
+                                            calculatekWh(radiationByHour, 1))));
+                            kWhPerM2PerDay = calculatekWh(radiationByHour, 1);
                         }
                     });
 
