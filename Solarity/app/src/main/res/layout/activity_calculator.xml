@@ -105,20 +105,21 @@
                 android:layout_height="wrap_content">
                 <LinearLayout
                     android:layout_marginTop="@dimen/activity_vertical_margin"
+                    android:orientation="horizontal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerHorizontal="true">
                     <Button
-                        style="@style/Widget.AppCompat.Button.Colored"
+                        style="@style/Widget.AppCompat.Button.Small"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:id="@+id/addUsage"
-                        android:text="+" />
+                        android:text="Add Usage" />
                     <Button
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:id="@+id/loadHouseholdData"
-                        android:text="Typical usage" />
+                        android:text="Typical household" />
                 </LinearLayout>
             </RelativeLayout>
 
