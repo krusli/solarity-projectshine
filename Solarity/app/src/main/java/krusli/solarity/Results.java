@@ -52,7 +52,6 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
     private GoogleApiClient mGoogleApiClient;
 
     LocationRequest mLocationRequest;
-    com.google.android.gms.location.LocationListener mLocationListener;
     Location mLastLocation;
 
     Float lightIntensity;
@@ -171,8 +170,9 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+            startLocationUpdates();
         }
-        startLocationUpdates();
+
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
         if (mLastLocation == null) {
             Log.d("onConnected", "startLocationUpdates()");
@@ -250,15 +250,74 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
 
     @Override
     public void onLocationChanged(Location location) {
+        Log.d("Location changed", "");
         mLastLocation = location;
+        if (mLastLocation != null) {
+            double latitude = mLastLocation.getLatitude();
+            double longitude = mLastLocation.getLongitude();
+            Log.d("Latitude, longitude", String.format("%f, %f", latitude, longitude));
+
+            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+            httpClient.addInterceptor(logging);
+
+            /* make a request to our backend */
+            Retrofit retrofit = new Retrofit.Builder()
+                    .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .baseUrl("http://krusli.me:5000/")
+                    .client(httpClient.build())
+                    .build();
+
+            // get current month
+            Date date = new Date();
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(date);
+            int month = calendar.get(Calendar.MONTH);
+
+            PredictionsService predictionsService = retrofit.create(PredictionsService.class);
+            Observable<ApiResponse> apiResponseObservable = predictionsService.getPredictionsData(latitude, longitude, month, lightIntensity );
+
+            apiResponseObservable.subscribeOn(Schedulers.newThread())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new Subscriber<ApiResponse>() {
+                        @Override
+                        public void onCompleted() {
+
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+
+                        }
+
+                        @Override
+                        public void onNext(ApiResponse apiResponse) {
+                            Log.d("API response", apiResponse.getRadiationByHour().toString());
+                            radiationByHour = apiResponse.getRadiationByHour();
+
+                            drawChart();
+
+                            binding.generatedPower.setText(
+                                    Html.fromHtml(String.format("1 m<sup>2</sup> of solar panels here generates an estimated %.2f kWh of electricity every day.",
+                                            calculatekWh(radiationByHour, 1))));
+                            kWhPerM2PerDay = calculatekWh(radiationByHour, 1);
+                        }
+                    });
+
+
+        } else {
+            Toast.makeText(this, "Cannot get location. Did you turn off your location services?", Toast.LENGTH_SHORT).show();
+        }
     }
 
     protected void startLocationUpdates() {
         // Create the location request
         mLocationRequest = LocationRequest.create()
                 .setPriority(LocationRequest.PRIORITY_LOW_POWER)
-                .setInterval(30 * 1000)
-                .setFastestInterval(5 * 1000);
+                .setInterval(10 * 1000)
+                .setFastestInterval(1 * 1000);
 
         // Request location updates
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
