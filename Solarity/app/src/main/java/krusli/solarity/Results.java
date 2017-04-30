@@ -37,6 +37,8 @@ import java.util.Date;
 import java.util.List;
 
 import krusli.solarity.databinding.ActivityResultsBinding;
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -173,17 +175,25 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
         startLocationUpdates();
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
         if (mLastLocation == null) {
+            Log.d("onConnected", "startLocationUpdates()");
             startLocationUpdates();
         }
         if (mLastLocation != null) {
             double latitude = mLastLocation.getLatitude();
             double longitude = mLastLocation.getLongitude();
+            Log.d("Latitude, longitude", String.format("%f, %f", latitude, longitude));
+
+            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+            httpClient.addInterceptor(logging);
 
             /* make a request to our backend */
             Retrofit retrofit = new Retrofit.Builder()
                     .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
                     .addConverterFactory(GsonConverterFactory.create())
                     .baseUrl("http://krusli.me:5000/")
+                    .client(httpClient.build())
                     .build();
 
             // get current month
@@ -246,7 +256,7 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
     protected void startLocationUpdates() {
         // Create the location request
         mLocationRequest = LocationRequest.create()
-                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                .setPriority(LocationRequest.PRIORITY_LOW_POWER)
                 .setInterval(30 * 1000)
                 .setFastestInterval(5 * 1000);
 

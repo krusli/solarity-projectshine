@@ -10,9 +10,11 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.os.Vibrator;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -21,6 +23,7 @@ import com.github.lzyzsd.circleprogress.DonutProgress;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Observable;
 
 import krusli.solarity.databinding.ActivityHomeBinding;
 
@@ -29,6 +32,7 @@ public class Home extends AppCompatActivity implements SensorEventListener {
 
     private SensorManager mSensorManager;
     private Sensor mLight;
+    private Vibrator vibrator;
 
     private float sensorValue = 0;
     private ArrayList<Float> sensorSamples = new ArrayList<>();
@@ -57,6 +61,8 @@ public class Home extends AppCompatActivity implements SensorEventListener {
 
             donutProgress.setProgress(0);   // reset
 
+            vibrator.vibrate(100); // ms
+
             /* start Results activity */
             resultsIntent.putExtra("LIGHT_VALUE", avg);
             startActivity(resultsIntent);
@@ -78,6 +84,8 @@ public class Home extends AppCompatActivity implements SensorEventListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = DataBindingUtil.setContentView(this, R.layout.activity_home);
+
+        vibrator = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
 
         /* load light sensor to an instance */
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -136,6 +144,13 @@ public class Home extends AppCompatActivity implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         sensorValue = event.values[0];
+        int bgColor = interpolateColor(ContextCompat.getColor(this, R.color.colorPrimary),
+                ContextCompat.getColor(this, R.color.colorPrimaryLight),
+                sensorValue/100000);
+//        Log.d("bgColor", String.valueOf(bgColor));
+        binding.activityHome.setBackgroundColor(bgColor);
+
+//        binding.activityHome.setBackgroundColor();
     }
 
     @Override
@@ -152,4 +167,23 @@ public class Home extends AppCompatActivity implements SensorEventListener {
         super.onPause();
         mSensorManager.unregisterListener(this);
     }
+
+
+    private float interpolate(float a, float b, float proportion) {
+        return (a + ((b - a) * proportion));
+    }
+
+    /** Returns an interpoloated color, between a and b */
+    private int interpolateColor(int a, int b, float proportion) {
+        float[] hsva = new float[3];
+        float[] hsvb = new float[3];
+        Color.colorToHSV(a, hsva);
+        Color.colorToHSV(b, hsvb);
+        for (int i = 0; i < 3; i++) {
+            hsvb[i] = interpolate(hsva[i], hsvb[i], proportion);
+        }
+        return Color.HSVToColor(hsvb);
+    }
+
+
 }

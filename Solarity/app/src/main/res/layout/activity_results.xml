@@ -61,11 +61,11 @@
                     android:layout_height="wrap_content"
                     android:id="@+id/learnMore"
                     android:text="Learn more"/>
-                <Button
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Purchase"
-                    android:id="@+id/buyButton" />
+                <!--<Button-->
+                    <!--android:layout_width="wrap_content"-->
+                    <!--android:layout_height="wrap_content"-->
+                    <!--android:text="Purchase"-->
+                    <!--android:id="@+id/buyButton" />-->
 
             </LinearLayout>
 
