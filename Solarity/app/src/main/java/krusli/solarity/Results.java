@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.databinding.DataBindingUtil;
 import android.location.Location;
+import android.location.LocationManager;
+import android.location.LocationListener;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -27,8 +29,7 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
+//import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
@@ -47,12 +48,12 @@ import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.schedulers.Schedulers;
 
-public class Results extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
+public class Results extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
     ActivityResultsBinding binding;
     private GoogleApiClient mGoogleApiClient;
 
-    LocationRequest mLocationRequest;
-    Location mLastLocation;
+//    LocationRequest mLocationRequest;
+//    Location mLastLocation;
 
     Float lightIntensity;
     List<Float> radiationByHour;
@@ -60,20 +61,24 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
 
     LineChart chart;
 
+
+    LocationManager mLocationManager;
+
+
     public static final double PANEL_EFFICIENCY = 0.14;
 
     double calculatekWh(List<Float> radiationList, double panelSize) {
         double sum = 0;
-        for (int i=0; i<radiationList.size(); i++) {
+        for (int i = 0; i < radiationList.size(); i++) {
             sum += panelSize * radiationList.get(i) * PANEL_EFFICIENCY * 1; // 1 hour
         }
-        return sum/1000;
+        return sum / 1000;
     }
 
     void drawChart() {
         List<Entry> entries = new ArrayList<>();
         // load to entries
-        for (int i=0; i<radiationByHour.size(); i++) {
+        for (int i = 0; i < radiationByHour.size(); i++) {
             entries.add(new Entry(i, radiationByHour.get(i)));
         }
 
@@ -84,7 +89,8 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
         LineData lineData = new LineData(dataSet);
         chart.setData(lineData);
 
-        Description description = new Description(); description.setText("");
+        Description description = new Description();
+        description.setText("");
         chart.setDescription(description);
         chart.setDrawGridBackground(false);
         Legend l = chart.getLegend();
@@ -101,10 +107,85 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
         chart.invalidate(); // refresh
     }
 
+    private final LocationListener mLocationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(final Location location) {
+            Log.d("onLocationChanged", "onLocationChanged");
+            double latitude = location.getLatitude();
+            double longitude = location.getLongitude();
+            Log.d("Latitude, longitude", String.format("%f, %f", latitude, longitude));
+
+            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+            httpClient.addInterceptor(logging);
+
+            /* make a request to our backend */
+            Retrofit retrofit = new Retrofit.Builder()
+                    .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .baseUrl("http://krusli.me:5000/")
+                    .client(httpClient.build())
+                    .build();
+
+            // get current month
+            Date date = new Date();
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(date);
+            int month = calendar.get(Calendar.MONTH);
+
+            PredictionsService predictionsService = retrofit.create(PredictionsService.class);
+            Observable<ApiResponse> apiResponseObservable = predictionsService.getPredictionsData(latitude, longitude, month, lightIntensity );
+
+            apiResponseObservable.subscribeOn(Schedulers.newThread())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new Subscriber<ApiResponse>() {
+                        @Override
+                        public void onCompleted() {
+
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+
+                        }
+
+                        @Override
+                        public void onNext(ApiResponse apiResponse) {
+                            Log.d("API response", apiResponse.getRadiationByHour().toString());
+                            radiationByHour = apiResponse.getRadiationByHour();
+
+                            drawChart();
+
+                            binding.generatedPower.setText(
+                                    Html.fromHtml(String.format("1 m<sup>2</sup> of solar panels here generates an estimated %.2f kWh of electricity every day.",
+                                            calculatekWh(radiationByHour, 1))));
+                            kWhPerM2PerDay = calculatekWh(radiationByHour, 1);
+                        }
+                    });
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
         binding = DataBindingUtil.setContentView(this, R.layout.activity_results);
 
         chart = binding.chart;
@@ -122,6 +203,9 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
                     .addApi(LocationServices.API)
                     .build();
         }
+        Log.d("onStart", "Connecting to Google Play Services");
+        mGoogleApiClient.connect();
+
 
 
         binding.resultsBlurb.setText(Html.fromHtml("Estimated solar radiation in Watts per m<sup>2</sup>"));
@@ -153,89 +237,27 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
 
     @Override
     protected void onStart() {
-        Log.d("onStart", "Connecting to Google Play Services");
-        mGoogleApiClient.connect();
         super.onStart();
     }
 
     @Override
     protected void onStop() {
-        mGoogleApiClient.disconnect();
+//        mGoogleApiClient.disconnect();
         super.onStop();
     }
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         Log.d("onConnected", "Connected to Google Play Services");
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
-            startLocationUpdates();
+            return;
         }
-
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        if (mLastLocation == null) {
-            Log.d("onConnected", "startLocationUpdates()");
-            startLocationUpdates();
-        }
-        if (mLastLocation != null) {
-            double latitude = mLastLocation.getLatitude();
-            double longitude = mLastLocation.getLongitude();
-            Log.d("Latitude, longitude", String.format("%f, %f", latitude, longitude));
-
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
-            httpClient.addInterceptor(logging);
-
-            /* make a request to our backend */
-            Retrofit retrofit = new Retrofit.Builder()
-                    .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .baseUrl("http://krusli.me:5000/")
-                    .client(httpClient.build())
-                    .build();
-
-            // get current month
-            Date date = new Date();
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(date);
-            int month = calendar.get(Calendar.MONTH);
-
-            PredictionsService predictionsService = retrofit.create(PredictionsService.class);
-            Observable<ApiResponse> apiResponseObservable = predictionsService.getPredictionsData(latitude, longitude, month, lightIntensity );
-
-            apiResponseObservable.subscribeOn(Schedulers.newThread())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(new Subscriber<ApiResponse>() {
-                        @Override
-                        public void onCompleted() {
-
-                        }
-
-                        @Override
-                        public void onError(Throwable e) {
-
-                        }
-
-                        @Override
-                        public void onNext(ApiResponse apiResponse) {
-                            Log.d("API response", apiResponse.getRadiationByHour().toString());
-                            radiationByHour = apiResponse.getRadiationByHour();
-
-                            drawChart();
-
-                            binding.generatedPower.setText(
-                                    Html.fromHtml(String.format("1 m<sup>2</sup> of solar panels here generates an estimated %.2f kWh of electricity every day.",
-                                            calculatekWh(radiationByHour, 1))));
-                            kWhPerM2PerDay = calculatekWh(radiationByHour, 1);
-                        }
-                    });
+        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, (float) 0, mLocationListener);
 
 
-        } else {
-            Toast.makeText(this, "Cannot get location. Did you turn off your location services?", Toast.LENGTH_SHORT).show();
-        }
     }
 
     @Override
@@ -248,84 +270,6 @@ public class Results extends AppCompatActivity implements GoogleApiClient.Connec
 
     }
 
-    @Override
-    public void onLocationChanged(Location location) {
-        Log.d("Location changed", "");
-        mLastLocation = location;
-        if (mLastLocation != null) {
-            double latitude = mLastLocation.getLatitude();
-            double longitude = mLastLocation.getLongitude();
-            Log.d("Latitude, longitude", String.format("%f, %f", latitude, longitude));
-
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
-            httpClient.addInterceptor(logging);
-
-            /* make a request to our backend */
-            Retrofit retrofit = new Retrofit.Builder()
-                    .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .baseUrl("http://krusli.me:5000/")
-                    .client(httpClient.build())
-                    .build();
-
-            // get current month
-            Date date = new Date();
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(date);
-            int month = calendar.get(Calendar.MONTH);
-
-            PredictionsService predictionsService = retrofit.create(PredictionsService.class);
-            Observable<ApiResponse> apiResponseObservable = predictionsService.getPredictionsData(latitude, longitude, month, lightIntensity );
-
-            apiResponseObservable.subscribeOn(Schedulers.newThread())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(new Subscriber<ApiResponse>() {
-                        @Override
-                        public void onCompleted() {
-
-                        }
-
-                        @Override
-                        public void onError(Throwable e) {
-
-                        }
-
-                        @Override
-                        public void onNext(ApiResponse apiResponse) {
-                            Log.d("API response", apiResponse.getRadiationByHour().toString());
-                            radiationByHour = apiResponse.getRadiationByHour();
-
-                            drawChart();
-
-                            binding.generatedPower.setText(
-                                    Html.fromHtml(String.format("1 m<sup>2</sup> of solar panels here generates an estimated %.2f kWh of electricity every day.",
-                                            calculatekWh(radiationByHour, 1))));
-                            kWhPerM2PerDay = calculatekWh(radiationByHour, 1);
-                        }
-                    });
-
-
-        } else {
-            Toast.makeText(this, "Cannot get location. Did you turn off your location services?", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    protected void startLocationUpdates() {
-        // Create the location request
-        mLocationRequest = LocationRequest.create()
-                .setPriority(LocationRequest.PRIORITY_LOW_POWER)
-                .setInterval(10 * 1000)
-                .setFastestInterval(1 * 1000);
-
-        // Request location updates
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
-        }
-        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-    }
 
 
 }
